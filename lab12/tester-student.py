@@ -418,7 +418,12 @@ def correct_header_fields():
   if not segment.has_same_flags(ref_segment):
     if "ACK" in segment.flags:
       segment.flags.remove("ACK")
-
+  #print str(segment.seqno) + " " + str(ref_segment.seqno)
+  #print str(segment.ackno) + " " + str(ref_segment.ackno)
+  #print str(segment.length) + " " + str(ref_segment.length)
+  #print str(segment.window) + " " + str(ref_segment.window)
+  #print str(segment.checksum) + " " + str(ref_segment.checksum)
+  #print str(segment.has_same_flags(ref_segment))
   return (
     segment.seqno == ref_segment.seqno and
     (segment.ackno == 0 or segment.ackno == ref_segment.ackno) and
@@ -473,6 +478,10 @@ def large_data():
   write_to(client, test_str)
   time.sleep(TEST_TIMEOUT)
   result = read_from(server)
+  
+  print " "
+  print str(result)
+  #print str(test_str)
   return result == test_str
 
 
@@ -489,6 +498,9 @@ def unreliability(flag):
 
   write_to(client, test_str)
   time.sleep(TEST_TIMEOUT)
+  #print " "
+  #print read_from(server)
+  #print test_str
   return read_from(server) == test_str
 
 def segment_corruption():
@@ -521,12 +533,18 @@ def segment_truncated():
   # Send full segment.
   write_to(client, test_str)
   time.sleep(TEST_TIMEOUT)
+
   if read_from(server, num_lines=1) != test_str:
     return False
 
   # Write the truncated segment. Nothing should be read from the server.
   write_to(client, truncated_str)
   time.sleep(TEST_TIMEOUT)
+
+  #print "Case 2"
+  #print readfrom(server,num_line=1)
+  #print truncated_str;
+  #print (read_from(server, num_lines=1) == truncated_str)
   if read_from(server, num_lines=1) == truncated_str:
     return False
 

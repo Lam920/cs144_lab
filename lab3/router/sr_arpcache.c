@@ -18,6 +18,14 @@
 */
 void sr_arpcache_sweepreqs(struct sr_instance *sr) { 
     /* Fill this in */
+    struct sr_arpreq *head = sr->cache.requests;
+    while(head)
+    {
+	    printf("In cache sweep!\n");
+        handle_arpreq(sr,&sr->cache,head);
+        head = head->next;
+    }
+
 }
 
 /* You should not need to touch the rest of this code. */
@@ -61,7 +69,7 @@ struct sr_arpreq *sr_arpcache_queuereq(struct sr_arpcache *cache,
                                        char *iface)
 {
     pthread_mutex_lock(&(cache->lock));
-    
+    printf("Enter arp queue requesr!\n");    
     struct sr_arpreq *req;
     for (req = cache->requests; req != NULL; req = req->next) {
         if (req->ip == ip) {
@@ -88,6 +96,7 @@ struct sr_arpreq *sr_arpcache_queuereq(struct sr_arpcache *cache,
         strncpy(new_pkt->iface, iface, sr_IFACE_NAMELEN);
         new_pkt->next = req->packets;
         req->packets = new_pkt;
+        /*print_hdr_eth(req->packets);*/
     }
     
     pthread_mutex_unlock(&(cache->lock));
@@ -244,4 +253,62 @@ void *sr_arpcache_timeout(void *sr_ptr) {
     
     return NULL;
 }
+void handle_arpreq(struct sr_instance *sr,struct sr_arpcache *cache,struct sr_arpreq *req)
+{
+    /* Get current time */
+    time_t curtime = time(NULL);
+    if(difftime(curtime,req->sent) >= 1.0)
+    {
+        if(req->times_sent >= 5)
+        {
+            printf("send icmp host unreachable to source addr of all pkts waiting!\n");
+	    sr_ethernet_hdr_t *send_ether_hdr = (sr_ethernet_hdr_t *)(req->packets->buf);
+            sr_ip_hdr_t *send_ip_hdr = (sr_ip_hdr_t *)(req->packets->buf + sizeof(sr_ethernet_hdr_t));
+	     /*print_hdr_eth(send_ether_hdr);
+		print_hdr_ip(send_ip_hdr);*/
+            sr_send_ICMP_error(sr,req->packets->iface,send_ether_hdr,send_ip_hdr,req->packets->buf,req->packets->len,3,1,0);
+            sr_arpreq_destroy(cache,req);
+        }
+        else{
+            send_arpreq(sr,req);
+            req->sent = curtime;
+            req->times_sent++;
+        }
+    }
+}
 
+void send_arpreq(struct sr_instance *sr,struct sr_arpreq *req)
+{
+    int size_of_arp = sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t);
+    uint8_t *buff = (uint8_t *)calloc(size_of_arp,1);
+    sr_ip_hdr_t *ip_hdr = (sr_ip_hdr_t *)(req->packets->buf + sizeof(sr_ethernet_hdr_t));
+
+    sr_ethernet_hdr_t *ether_hdr = (sr_ethernet_hdr_t *)buff;
+    sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *)(buff + sizeof(sr_ethernet_hdr_t));
+    ether_hdr->ether_type = htons((enum sr_ethertype)ethertype_arp);
+
+    memcpy(ether_hdr->ether_shost,sr_get_interface(sr,req->packets->iface)->addr,ETHER_ADDR_LEN);
+
+    int i = 0;
+    for(i=0;i<ETHER_ADDR_LEN;i++)
+    {
+        ether_hdr->ether_dhost[i] = 0xFF;
+    }
+
+    arp_hdr->ar_hln = 6;
+    arp_hdr->ar_hrd = htons(1);
+    arp_hdr->ar_pro = htons(2048);
+    arp_hdr->ar_pln = 4;
+    arp_hdr->ar_op = htons((enum sr_arp_opcode)arp_op_request);
+    arp_hdr->ar_sip = sr_get_interface(sr,req->packets->iface)->ip;
+    arp_hdr->ar_tip = req->ip;
+    memcpy(arp_hdr->ar_sha,ether_hdr->ether_shost,ETHER_ADDR_LEN);
+    sr_send_packet(sr,buff,size_of_arp,req->packets->iface);
+/*
+    printf("Send ARP request with ETHER_HDR and ARP_HDR!\n");
+    print_hdr_eth((uint8_t *)ether_hdr);
+    print_hdr_arp((uint8_t *)arp_hdr);
+*/
+    free(buff);
+
+}

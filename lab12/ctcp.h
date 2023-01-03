@@ -181,4 +181,8 @@ void ctcp_output(ctcp_state_t *state);
  */
 void ctcp_timer();
 
+void user_send_ack(ctcp_state_t *state, ctcp_segment_t *recv_segment);
+void user_send_fin(ctcp_state_t *state);
+
+
 #endif /* CTCP_H */
