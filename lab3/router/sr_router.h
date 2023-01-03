@@ -73,10 +73,5 @@ void sr_add_interface(struct sr_instance* , const char* );
 void sr_set_ether_ip(struct sr_instance* , uint32_t );
 void sr_set_ether_addr(struct sr_instance* , const unsigned char* );
 void sr_print_if_list(struct sr_instance* );
-void sr_send_arp_reply(struct sr_instance* sr,char* iface,sr_ethernet_hdr_t *send_ether_hdr,sr_arp_hdr_t *send_arp_hdr, uint8_t *packet, unsigned int len);
-struct sr_rt* longest_prefix_entry(struct sr_rt* routing_table,uint32_t des_ip);
-int check_for_if_target(struct sr_if *ref_if_list, uint32_t des_ip);
-void send_arp(struct sr_instance *sr, char *packet, char *iface);
-void sr_send_ICMP(struct sr_instance* sr,char* iface,sr_ethernet_hdr_t *send_ether_hdr,sr_ip_hdr_t *send_ip_hdr,uint8_t *packet, unsigned int len, uint8_t type, uint8_t code);
-void sr_send_ICMP_error(struct sr_instance* sr,char* iface,sr_ethernet_hdr_t *send_ether_hdr,sr_ip_hdr_t *send_ip_hdr,uint8_t *packet,unsigned int len, uint8_t type, uint8_t code,int set);
+
 #endif /* SR_ROUTER_H */
